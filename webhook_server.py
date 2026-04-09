@@ -11,6 +11,8 @@ import os
 import httpx
 from fastapi import FastAPI, Request
 
+from reply_logic import build_reply
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("webhook_server")
 
@@ -54,8 +56,7 @@ async def messenger_webhook(request: Request):
         return {"ok": True, "echo": "disabled"}
 
     text_in = (msg.get("text") or "").strip()
-    preview = (text_in[:180] + "…") if len(text_in) > 180 else text_in
-    out_text = f"[bot-test] Получено: {preview}" if preview else "[bot-test] (пустое сообщение)"
+    out_text = build_reply(text_in, str(conv_id))
 
     url = f"{_api_base()}/api/v1/bot/sendMessage"
     headers = {
