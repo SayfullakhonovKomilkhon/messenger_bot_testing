@@ -1,0 +1,66 @@
+# Тестирование бота мессенджера
+
+Два компонента:
+
+1. **`test_client.py`** — локально дергает все методы Bot API (`/me`, диалоги, сообщения, вебхук, опционально отправка).
+2. **`webhook_server.py`** — сервис для **Railway**: принимает POST `/webhook` и при `ECHO_REPLY=1` отвечает в чат через `sendMessage`.
+
+## Безопасность
+
+- **Не коммитьте** файл `.env` и **не вставляйте токен в код**. Токен из чата/скринов лучше **перевыпустить** в приложении (регенерация токена бота), если его кто-то мог увидеть.
+- На Railway задавайте секреты в **Variables**, не в репозитории.
+
+## Локально: проверка API
+
+```bash
+cd tg-bot-testing
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+В `.env` укажите:
+
+- `MESSENGER_API_URL` — URL вашего backend (например `https://api.example.com` без `/api/v1` в конце; скрипт сам добавит путь).
+- `BOT_TOKEN` — токен бота.
+
+Опционально:
+
+- `TARGET_USER_ID` — UUID **человека** (не бота), чтобы проверить `startConversation`.
+- `CONVERSATION_ID` — UUID чата с ботом, если список диалогов пуст с точки зрения API.
+- `WEBHOOK_PUBLIC_URL` — после деплоя вебхука, например `https://xxx.up.railway.app/webhook`.
+- `TEST_SEND_MESSAGE=1` — отправить тестовую строку в `CONVERSATION_ID` (осторожно: реальное сообщение в чат).
+
+Запуск:
+
+```bash
+python test_client.py
+```
+
+В выводе будет `OK` / `FAIL` по каждому вызову.
+
+## Railway: вебхук + эхо
+
+1. Создайте проект из этой папки (`tg-bot-testing` как root).
+2. **Variables:**
+   - `MESSENGER_API_URL`
+   - `BOT_TOKEN`
+   - `ECHO_REPLY` = `1` (или `0`, чтобы только логировать входящие POST без ответа)
+3. После деплоя скопируйте публичный URL сервиса, например `https://your-service.up.railway.app`.
+4. Установите вебхук (один из способов):
+   - в `.env` локально: `WEBHOOK_PUBLIC_URL=https://your-service.up.railway.app/webhook` и снова `python test_client.py`,  
+   - или в приложении мессенджера укажите тот же URL вебхука для бота.
+5. Напишите боту из приложения — на Railway в логах должен появиться payload; при `ECHO_REPLY=1` бот ответит строкой `[bot-test] Получено: ...`.
+
+Проверка живости сервиса: `GET /health`.
+
+## Пути
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /health` | Health check |
+| `POST /webhook` | URL для поля вебхука бота в мессенджере |
+
+Подробная спецификация API бота: `messenger/docs/BOT_INTEGRATION_GUIDE.md`.
+# messenger_bot_testing
